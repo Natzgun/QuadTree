@@ -1,5 +1,5 @@
-#ifndef PRQUADTREE_H
-#define PRQUADTREE_H
+#ifndef PQUADTREE_H
+#define PQUADTREE_H
 
 #include <iostream>
 using namespace std;
@@ -60,4 +60,4 @@ public:
 
 };
 
-#endif // PRQUADTREE_H
+#endif // PQUADTREE_H

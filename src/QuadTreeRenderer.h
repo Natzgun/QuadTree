@@ -13,20 +13,12 @@ template <typename T>
 class QuadTreeRenderer {
  public:
   QuadTreeRenderer(int width, int height)
-      : window(sf::VideoMode(width, height), "PointQuadTree") {}
+      : window(sf::VideoMode(width, height), "PointQuadTree"),
+        rootPointDrawn(false) {}
   void render(PointQuadTree<T>& tree) {
     window.setFramerateLimit(75);
 
-    /* sf::CircleShape circle(50.f);
-    circle.setFillColor(sf::Color::Green);
-    circle.setPosition(600.f, 350.f);
-
-    sf::ConvexShape triangle(3);
-    triangle.setPoint(0, {100.f, 100.f});
-    triangle.setPoint(1, {200.f, 100.f});
-    triangle.setPoint(2, {150.f, 200.f});
-    triangle.setFillColor(sf::Color::Magenta); */
-
+    int data = 0;
     while (window.isOpen()) {
       for (auto event = sf::Event(); window.pollEvent(event);) {
         if (event.type == sf::Event::Closed) {
@@ -35,18 +27,26 @@ class QuadTreeRenderer {
 
         if (event.type == sf::Event::MouseButtonPressed) {
           sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+          tree.insert(mousePos.x, mousePos.y, data++);
           drawPoint(mousePos.x, mousePos.y);
+          drawLines(tree);
 
           cout << mousePos.x << " - " << mousePos.y << endl;
         }
       }
 
+
+
       window.clear();
       // window.draw(circle);
       // window.draw(triangle);
-      
+
       for (auto& point : points) {
         window.draw(point);
+      }
+
+      for (auto& line : lines) {
+        window.draw(line);
       }
       window.display();
     }
@@ -54,18 +54,57 @@ class QuadTreeRenderer {
 
  private:
   sf::RenderWindow window;
-  Q_point<int>* topLeft;
-  Q_point<int>* botRight;
   vector<sf::CircleShape> points;
-
-  void drawTree(sf::RenderWindow window, PointQuadTree<T>& tree);
+  vector<sf::VertexArray> lines;
+  bool rootPointDrawn;
 
   void drawPoint(float x, float y) {
-    sf::CircleShape circle(10.f);
-    circle.setFillColor(sf::Color::White);
-    circle.setPosition(x, y);
+    sf::CircleShape circle(5.f);
+    circle.setFillColor(sf::Color::Red);
+    circle.setPosition(x - 5, y - 5);
     points.push_back(circle);
   }
+
+  void drawLines(PointQuadTree<int>& tree) {
+    drawingTwoLines(tree, 0, 0, window.getSize().x, window.getSize().y);
+  }
+
+  /*
+   * (topX,topY)
+   *    -----------------
+   *   |                 |
+   *   |                 |
+   *   |                 |
+   *   |                 |
+   *   |                 |
+   *   ------------------ (botX), botY)
+   * */
+void drawingTwoLines(PointQuadTree<int>& tree, int xMin, int yMin, int xMax, int yMax) {
+    if (!tree.getRoot()) return;
+
+    int rootX = tree.getRoot()->x;
+    int rootY = tree.getRoot()->y;
+
+    sf::VertexArray verticalLine(sf::Lines, 2);
+    verticalLine[0].position = sf::Vector2f(rootX, yMin);  // Desde la parte superior hasta el límite inferior del cuadrante
+    verticalLine[1].position = sf::Vector2f(rootX, yMax);
+    verticalLine[0].color = sf::Color::White;
+    verticalLine[1].color = sf::Color::White;
+
+    sf::VertexArray horizontalLine(sf::Lines, 2);
+    horizontalLine[0].position = sf::Vector2f(xMin, rootY); // Desde el límite izquierdo hasta el derecho en la línea del punto
+    horizontalLine[1].position = sf::Vector2f(xMax, rootY);
+    horizontalLine[0].color = sf::Color::White;
+    horizontalLine[1].color = sf::Color::White;
+
+    lines.push_back(verticalLine);
+    lines.push_back(horizontalLine);
+
+    if (tree.getNW()) drawingTwoLines(*tree.getNW(), xMin, rootY, rootX, yMax); // Noroeste
+    if (tree.getNE()) drawingTwoLines(*tree.getNE(), rootX, rootY, xMax, yMax); // Noreste
+    if (tree.getSW()) drawingTwoLines(*tree.getSW(), xMin, yMin, rootX, rootY); // Suroeste
+    if (tree.getSE()) drawingTwoLines(*tree.getSE(), rootX, yMin, xMax, rootY); // Sureste
+}
 };
 
 #endif  // QUADTREE_RENDER_H
